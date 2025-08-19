@@ -1,0 +1,9 @@
+../Core/Src/icm42688_hal.c:36:6:icm42688_hal_init	24	static
+../Core/Src/icm42688_hal.c:46:13:set_acc_transition_factor	16	static
+../Core/Src/icm42688_hal.c:70:13:set_gyro_transition_factor	16	static
+../Core/Src/icm42688_hal.c:106:13:set_sample_rate	24	static
+../Core/Src/icm42688_hal.c:154:9:icm42688_init	16	static
+../Core/Src/icm42688_hal.c:202:6:icm42688_get_acc	16	static
+../Core/Src/icm42688_hal.c:222:6:icm42688_get_gyro	16	static
+../Core/Src/icm42688_hal.c:244:7:icm42688_acc_transition	16	static
+../Core/Src/icm42688_hal.c:253:7:icm42688_gyro_transition	16	static

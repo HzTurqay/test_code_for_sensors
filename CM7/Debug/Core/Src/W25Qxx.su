@@ -1,0 +1,7 @@
+../Core/Src/W25Qxx.c:18:6:W25Q_Delay	16	static
+../Core/Src/W25Qxx.c:23:6:csLOW	8	static
+../Core/Src/W25Qxx.c:28:6:csHIGH	8	static
+../Core/Src/W25Qxx.c:33:6:SPI_Write	16	static
+../Core/Src/W25Qxx.c:38:6:SPI_Read	16	static
+../Core/Src/W25Qxx.c:45:6:W25Q_Reset	16	static
+../Core/Src/W25Qxx.c:56:10:W25Q_ReadID	16	static

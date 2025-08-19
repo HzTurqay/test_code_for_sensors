@@ -1,0 +1,9 @@
+../Core/Src/ahrs_hal.c:60:14:invSqrt	1
+../Core/Src/ahrs_hal.c:78:14:limitIntegral	1
+../Core/Src/ahrs_hal.c:91:14:applyDeadband	2
+../Core/Src/ahrs_hal.c:103:6:ahrs_hal_init	1
+../Core/Src/ahrs_hal.c:120:6:ahrs_update	13
+../Core/Src/ahrs_hal.c:252:6:ahrs_reset_parameters	1
+../Core/Src/ahrs_hal.c:268:6:ahrs_init	2
+../Core/Src/ahrs_hal.c:296:6:ahrs_get_attitude	2
+../Core/Src/ahrs_hal.c:308:6:ahrs_init_attitude_offset	4

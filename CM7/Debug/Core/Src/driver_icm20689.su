@@ -1,0 +1,12 @@
+../Core/Src/driver_icm20689.c:72:16:ICM20689_Write_Reg	24	static
+../Core/Src/driver_icm20689.c:82:16:ICM20689_Read_Reg	24	static
+../Core/Src/driver_icm20689.c:93:6:icm20689_reset	8	static
+../Core/Src/driver_icm20689.c:100:9:Init_ICM20689	8	static
+../Core/Src/driver_icm20689.c:131:15:MPU_Get_Accelerometer	32	static
+../Core/Src/driver_icm20689.c:144:15:MPU_Get_Gyroscope	32	static
+../Core/Src/driver_icm20689.c:156:15:MPU_Write_Len	24	static
+../Core/Src/driver_icm20689.c:167:15:MPU_Read_Len	24	static
+../Core/Src/driver_icm20689.c:180:12:idd_io_hal_read_reg	24	static
+../Core/Src/driver_icm20689.c:185:12:idd_io_hal_write_reg	24	static
+../Core/Src/driver_icm20689.c:196:6:icm20689_dmp_setup	8	static
+../Core/Src/driver_icm20689.c:203:6:get_dmp_data	32	static
