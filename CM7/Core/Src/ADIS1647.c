@@ -1,244 +1,267 @@
 /*
-
-https://github.com/SniPerLyFe01/ADIS16477/blob/main/Project/Core/Src/adis16477.c
-
-
-
-float X_GYRO;
-float Y_GYRO;
-float Z_GYRO;
-float X_ACCEL;
-float Y_ACCEL;
-float Z_ACCEL;
-float ADIS_TEMP;
-float start_time, end_time, execution_time, freq;
-
-
-struct ADIS ADIS_dev;
-
-
-
-  ADIS_dev.read = 		ADIS_read;
-  ADIS_dev.burst_read = ADIS_burst_read;
-  ADIS_dev.write = 		ADIS_write;
-  ADIS_dev.delay = 		ADIS_Delay;
-
-  ADIS_16477_Init(&ADIS_dev);
-
-
-  	  start_time = HAL_GetTick();
-
-	  Burst_Read_16(&ADIS_dev);
-	  X_GYRO = Scale_gyro (ADIS_dev.gyro_x);
-	  Y_GYRO = Scale_gyro (ADIS_dev.gyro_y);
-	  Z_GYRO = Scale_gyro (ADIS_dev.gyro_z);
-	  X_ACCEL = Scale_accel (ADIS_dev.accel_x);
-      Y_ACCEL = Scale_accel (ADIS_dev.accel_y);
-      Z_ACCEL = Scale_accel (ADIS_dev.accel_z);
-      ADIS_TEMP = Scale_temp (ADIS_dev.temp);
-
-	  end_time = HAL_GetTick();
-	  execution_time = end_time - start_time;
-	  execution_time = execution_time / 1000;
-	  freq = 1 / execution_time;
-
-*/
+ * imu.c
+ *
+ *  Created on: July 15, 2021
+ *      Author: Benson Yang
+ */
 
 #include "ADIS1647.h"
-#include "spi.h"
-#include "gpio.h"
-  int8_t ADIS_16477_Reset(struct ADIS *dev){
 
-  int8_t rslt;
-  uint16_t len 				= 1;
-  uint16_t data 			= 0;
-  uint16_t MSC_Byte			= 0x41;		//  01000001
-  uint16_t SOFTWARE_RESET	= 0x80; 	//  bit 7
+static int16_t Burst_Cmd = 0x6800;
 
-      // Start up time
-      dev->delay(252);
-      rslt = dev->write(GLOB_CMD, &SOFTWARE_RESET, len);
-      dev->delay(193);
-      rslt = dev->read(MSC_CTRL, &data, len);
-      if(data == 0xC1){
-      rslt = dev->write(MSC_CTRL, &MSC_Byte, len);
-      dev->delay(1);
-      }
-      rslt = dev->read(MSC_CTRL, &data, len);
-      if(data != MSC_Byte){ return -1;}
-      return rslt;
-  }
 
-  int8_t ADIS_16477_Init(struct ADIS *dev){
 
-    int8_t rslt;
-    uint16_t Chip_ID 	= 0;
 
-       rslt = fac_calib_restore(dev);
-       rslt = ADIS_16477_Reset(dev);
+void ADIS16467_Init(ADIS16467_t *device)
+{
+    ADI_Write_Reg(device, GLOB_CMD_REG, 0x80); //software reset
+    ADI_Write_Reg(device, GLOB_CMD_REG + 1, 0x80);
+    HAL_Delay(400); // wait for reboot
 
-      // Chip Id checks
-      for (int i = 0; i < 2; i++) {
-      rslt = dev->read(PROD_ID, &Chip_ID, 1);}
-      if(Chip_ID != ADIS_CHIP_ID){return -9;}
-      dev->delay(10);
+    /*ADI_Write_Reg(device, FILT_CTRL_REG, 0x03); //set Bartlett filter level
+    ADI_Write_Reg(device, FILT_CTRL_REG + 1, 0x00);
 
-	  rslt = bias_correction(dev);
-	  rslt = self_test_sensor(dev);
-	  rslt = flash_mem_update(dev);
+    ADI_Write_Reg(device, DEC_RATE_REG, 0x03); //set value of filter to 4
+    ADI_Write_Reg(device, DEC_RATE_REG + 1, 0x00);*/
+}
 
-return rslt;
-  }
+int ADIS16467_Check(ADIS16467_t *device)
+{
+    uint16_t data[1];
+    ADI_Read_Reg(device, PROD_ID_REG, data, 1); //read device ID
+    device->prodId = data[0];
+    if (data[0] == 0x4053)
+        return 1;
+    else
+        return 0;
+}
 
-  int8_t self_test_memory(struct ADIS *dev){
+void ADIS16467_DeviceInfo(ADIS16467_t *device)
+{
+    uint16_t data[1];
+    ADI_Read_Reg(device, RANG_MDL_REG, data, 1); //read range model
+    device->rangeModel = data[0];
 
-    int8_t rslt;
-    uint16_t data 		= 0;
+    ADI_Read_Reg(device, FIRM_REV_REG, data, 1); //read firmware revision
+    device->firm_rev = data[0];
 
-    uint16_t FLASH_MEMORY_TEST	= 0x10; // GLOB_CMD bit 4
+    ADI_Read_Reg(device, FIRM_DM_REG, data, 1); //read firmware revision
+    device->firm_dm = data[0];
 
-	 rslt = dev->write(GLOB_CMD, &FLASH_MEMORY_TEST, 1);
+    ADI_Read_Reg(device, FIRM_Y_REG, data, 1); //read firmware revision
+    device->firm_y = data[0];
 
-		dev->delay(32);
+    ADI_Read_Reg(device, SERIAL_NUM_REG, data, 1); //read firmware revision
+    device->serial_num = data[0];
+}
 
-         rslt = dev->read(DIAG_STAT, &data, 1);
+void ADIS16467_Read_Accel(ADIS16467_t *device)
+{
+    uint16_t data[2];
 
-         if(data != 0x0000){return -9;}
-                 dev->delay(2);
+    ADI_Read_Reg(device, X_ACCL_LOW_REG, data, 2);
+    device->Ax = (int32_t)((data[1] << 16) & 0xFFFF0000 | data[0]) * (0.00125 / (1 << 16));
+    device->Accel_X_RAW = (int32_t)((data[1] << 16) & 0xFFFF0000 | data[0]);
 
-    return rslt;
-  }
-  int8_t self_test_sensor(struct ADIS *dev){
+    ADI_Read_Reg(device, Y_ACCL_LOW_REG, data, 2);
+    device->Ay = (int32_t)((data[1] << 16) & 0xFFFF0000 | data[0]) * (0.00125 / (1 << 16));
+    device->Accel_Y_RAW = (int32_t)((data[1] << 16) & 0xFFFF0000 | data[0]);
 
-    int8_t rslt;
-    uint16_t data 		= 0;
+    ADI_Read_Reg(device, Z_ACCL_LOW_REG, data, 2);
+    device->Az = (int32_t)((data[1] << 16) & 0xFFFF0000 | data[0]) * (0.00125 / (1 << 16));
+    device->Accel_Z_RAW = (int32_t)((data[1] << 16) & 0xFFFF0000 | data[0]);
+}
 
-    uint16_t SENSOR_SELF_TEST	= 0x04; // GLOB_CMD bit 2
+void ADIS16467_Read_Gyro(ADIS16467_t *device)
+{
+    uint16_t data[2];
 
-	  rslt = dev->write(GLOB_CMD, &SENSOR_SELF_TEST, 1);
+    ADI_Read_Reg(device, X_GYRO_LOW_REG, data, 2);
+    device->Gx = (int32_t)((data[1] << 16) & 0xFFFF0000 | data[0]) / 655360.0f;
+    device->Gyro_X_RAW = (int32_t)((data[1] << 16) & 0xFFFF0000 | data[0]);
 
-    		dev->delay(14);
+    ADI_Read_Reg(device, Y_GYRO_LOW_REG, data, 2);
+    device->Gy = (int32_t)((data[1] << 16) & 0xFFFF0000 | data[0]) / 655360.0f;
+    device->Gyro_Y_RAW = (int32_t)((data[1] << 16) & 0xFFFF0000 | data[0]);
 
-          rslt = dev->read(DIAG_STAT, &data, 1);
+    ADI_Read_Reg(device, Z_GYRO_LOW_REG, data, 2);
+    device->Gz = (int32_t)((data[1] << 16) & 0xFFFF0000 | data[0]) / 655360.0f;
+    device->Gyro_Z_RAW = (int32_t)((data[1] << 16) & 0xFFFF0000 | data[0]);
+}
 
-          if(data != 0x0000){return -9;}
-                     dev->delay(1);
+void ADIS16467_Read_Temp(ADIS16467_t *device)
+{
+    uint16_t data[1];
+    ADI_Read_Reg(device, TEMP_OUT_REG, data, 1);
+    device->Temperature = (int16_t)data[0] * 0.1;
+}
 
-        return rslt;
-  }
-  int8_t fac_calib_restore(struct ADIS *dev){
+int8_t ADIS16467_Burst_Read(ADIS16467_t *device)
+{
+    HAL_GPIO_WritePin(device->GPIOx, device->GPIO_PIN, 0);
+    int16_t parity = 0; //checksum
+    HAL_StatusTypeDef stat = HAL_OK;
+    uint16_t tmpRx = 0;
+    uint16_t tmpTx[10] = {0};
+    uint16_t data[10];
+    stat |= HAL_SPI_TransmitReceive(device->hspi, (uint8_t *)&Burst_Cmd, (uint8_t *)&tmpRx, 1, 0xff); //first 16bit is useless
+    if (stat != HAL_OK)
+        while (1)
+            ;
+    sb_delay(100);
+    stat |= HAL_SPI_TransmitReceive(device->hspi, (uint8_t *)&tmpTx, (uint8_t *)data, 10, 0xff); //receive data of 20 Bytes
+    if (stat != HAL_OK)
+        while (1)
+            ;
+    HAL_GPIO_WritePin(device->GPIOx, device->GPIO_PIN, 1);
+    sb_delay(150);
+    for (uint8_t i = 0; i < 9; i++)
+        parity += ((data[i] >> 8) & 0x00FF) + (data[i] & 0x00FF);
+    if (parity != data[9])
+        return 0;
 
-          int8_t rslt;
-          uint16_t data 		= 0;
+    //save data
+    device->Ax = (int16_t)data[4] * 0.00125;
+    device->Ay = (int16_t)data[5] * 0.00125;
+    device->Az = (int16_t)data[6] * 0.00125;
+    device->Gx = (int16_t)data[1] / 40;
+    device->Gy = (int16_t)data[2] / 40;
+    device->Gz = (int16_t)data[3] / 40;
+    device->Temperature = (int16_t)data[7] * 0.1;
+    device->status = data[0];
+    return 1;
+}
 
-          uint16_t FAC_CALIB_RESTORE	= 0x02; // GLOB_CMD bit 1
+// read data from register, recommend using continuous transfer
+/*
+@parameter:
+    device  imu device data structure
+    addr    target register address
+    receive save data to this var
+    num     number of register to read
+*/
+int8_t ADI_Read_Reg(ADIS16467_t *device, uint8_t addr, uint16_t *receive, uint8_t num)
+{
+    uint16_t Tx_tmp = 0, Rx_tmp = 0;
 
-      	 rslt = dev->write(GLOB_CMD, &FAC_CALIB_RESTORE, 1);
-
-      		dev->delay(142);
-
-               rslt = dev->read(DIAG_STAT, &data, 1);
-
-               if(data != 0x0000){return -9;}
-                       dev->delay(1);
-
-          return rslt;
-        }
-  int8_t flash_mem_update(struct ADIS *dev){
-
-        int8_t rslt;
-        uint16_t data 		= 0;
-
-        uint16_t FLASH_MEMORY_UPDATE	= 0x08; // GLOB_CMD bit 3
-
-    	 rslt = dev->write(GLOB_CMD, &FLASH_MEMORY_UPDATE, 1);
-
-    		dev->delay(72);
-
-             rslt = dev->read(DIAG_STAT, &data, 1);
-
-             if(data != 0x0000){return -9;}
-                     dev->delay(1);
-
-        return rslt;
-      }
-  int8_t bias_correction(struct ADIS *dev){
-
-      int8_t rslt;
-      uint16_t data 		= 0;
-
-      uint16_t BIAS_CORRECTION	= 0x01; // GLOB_CMD bit 0
-
-  	 rslt = dev->write(GLOB_CMD, &BIAS_CORRECTION, 1);
-
-  		dev->delay(300);
-
-           rslt = dev->read(DIAG_STAT, &data, 1);
-
-           if(data != 0x0000){return -9;}
-                   dev->delay(1);
-
-      return rslt;
+    //first frame only transmit
+    Tx_tmp = (addr << 8) & 0xFF00;
+    Rx_tmp = ADI_flame_TandR(device, Tx_tmp);
+    for (uint8_t i = 1; i < num; i++)
+    {
+        Tx_tmp = ((addr + 2 * i) << 8) & 0xFF00;
+        Rx_tmp = ADI_flame_TandR(device, Tx_tmp);
+        receive[i - 1] = Rx_tmp;
     }
-  int8_t Burst_Read_16(struct ADIS *dev){
+    //last frame only receive
+    Tx_tmp = 0;
+    receive[num - 1] = ADI_flame_TandR(device, Tx_tmp);
 
-  int8_t rslt;
-  uint16_t sum = 0;
-  uint16_t burstdata_16[10];
-  uint16_t reg_addr = GLOB_CMD;
-
-
-  rslt = dev->burst_read(reg_addr, burstdata_16, 10);
-
-	  dev->diag_stat = burstdata_16[0];
- 	  dev->gyro_x 	 = burstdata_16[1];
- 	  dev->gyro_y 	 = burstdata_16[2];
- 	  dev->gyro_z 	 = burstdata_16[3];
- 	  dev->accel_x	 = burstdata_16[4];
- 	  dev->accel_y 	 = burstdata_16[5];
- 	  dev->accel_z 	 = burstdata_16[6];
- 	  dev->temp 	 = burstdata_16[7];
- 	  dev->DATA_CNTR = burstdata_16[8];
- 	  dev->checksum  = burstdata_16[9];
-
- 	 sum =  checksum(dev);
- 	  if(dev->checksum != sum){
- 	   return -1;
- 	   }
-  return rslt;
+    return 0;
 }
 
-  int16_t checksum(struct ADIS *dev) {
-  int16_t sum = 0;
-  uint16_t burstArray [9] = {0};
-  uint16_t *checksum_helper = (uint16_t *)&dev->diag_stat;
-
-  for(int j = 0; j < 9 ; j++){
-      burstArray [j] = checksum_helper[j];
-  }
-
-  for (int i = 0; i < 9; i++)
-  {
-      sum += (burstArray[i] & 0xFF); // Lower byte
-      sum += ((burstArray[i] >> 8) & 0xFF); // Upper byte
-  }
-  return sum;
-}
-
-double Scale_accel(int16_t sensor_val)
+/*
+@parameter:
+    device  imu device data structure
+    addr    target register address
+    value   the data that you want to transfer
+*/
+int8_t ADI_Write_Reg(ADIS16467_t *device, uint8_t addr, uint8_t value)
 {
-  double rslt = sensor_val * 0.00125;
-  return rslt;
+    addr |= 0x80; //写数据的掩码
+    uint16_t Tx_tmp = ((addr << 8) & 0xFF00) | value;
+    ADI_flame_TandR(device, Tx_tmp);
+    return 0;
 }
 
-double Scale_gyro(int16_t sensor_val)
+uint16_t ADI_flame_TandR(ADIS16467_t *device, uint16_t trans)
 {
-  double rslt = sensor_val * 0.1;
-  return rslt;
+    HAL_GPIO_WritePin(device->GPIOx, device->GPIO_PIN, 0);
+    uint16_t result;
+    static HAL_StatusTypeDef state;
+    state = HAL_SPI_TransmitReceive(device->hspi, (uint8_t *)&trans, (uint8_t *)&result, 1, 0xFFFF);
+    if (state != HAL_OK)
+    {
+        while (1)
+            ;
+    }
+    HAL_GPIO_WritePin(device->GPIOx, device->GPIO_PIN, 1);
+    sb_delay(150);
+    return result;
+}
+void sb_delay(volatile uint32_t t)
+{
+    while (t--)
+        ;
 }
 
-double Scale_temp(int16_t sensor_val)
+
+/*
+
+void ADIS16467_Init(ADIS16467_t *device)
 {
-  double rslt = (sensor_val * 0.1);
-  return rslt;
+    HAL_GPIO_WritePin(device->GPIOx, device->GPIO_PIN, 0);
+    HAL_SPI_TransmitReceive(device->hspi, RANG_MDL_REG, &(device->rangeModel), 1, 0xFFFF);
+    HAL_GPIO_WritePin(device->GPIOx, device->GPIO_PIN, 1);
+    HAL_GPIO_WritePin(device->GPIOx, device->GPIO_PIN, 0);
+    HAL_SPI_TransmitReceive(device->hspi, PROD_ID_REG, &(device->prodId), 1, 0xFFFF);
+    HAL_GPIO_WritePin(device->GPIOx, device->GPIO_PIN, 1);
 }
+
+void ADIS16467_Read_Accel(ADIS16467_t *device)
+{
+    uint16_t low, high;
+    HAL_StatusTypeDef res;
+    HAL_GPIO_WritePin(device->GPIOx, device->GPIO_PIN, 0);
+    HAL_SPI_TransmitReceive(device->hspi, X_ACCL_LOW_REG, &low, 1, 0xFFFF);
+    HAL_SPI_TransmitReceive(device->hspi, X_ACCL_OUT_REG, &high, 1, 0xFFFF);
+    HAL_GPIO_WritePin(device->GPIOx, device->GPIO_PIN, 1);
+    device->Ax = (int32_t)((high << 16) & 0xFFFF0000 | low) * (0.00125 / (1 << 16));
+
+    HAL_GPIO_WritePin(device->GPIOx, device->GPIO_PIN, 0);
+    HAL_SPI_TransmitReceive(device->hspi, Y_ACCL_LOW_REG, &low, 1, 0xFFFF);
+    HAL_SPI_TransmitReceive(device->hspi, Y_ACCL_OUT_REG, &high, 1, 0xFFFF);
+    HAL_GPIO_WritePin(device->GPIOx, device->GPIO_PIN, 1);
+    device->Ay = (int32_t)((high << 16) & 0xFFFF0000 | low) * (0.00125 / (1 << 16));
+
+    HAL_GPIO_WritePin(device->GPIOx, device->GPIO_PIN, 0);
+    HAL_SPI_TransmitReceive(device->hspi, Z_ACCL_LOW_REG, &low, 1, 0xFFFF);
+    HAL_SPI_TransmitReceive(device->hspi, Z_ACCL_OUT_REG, &high, 1, 0xFFFF);
+    HAL_GPIO_WritePin(device->GPIOx, device->GPIO_PIN, 1);
+    device->Az = (int32_t)((high << 16) & 0xFFFF0000 | low) * (0.00125 / (1 << 16));
+}
+
+void ADIS16467_Read_Gyro(ADIS16467_t *device)
+{
+    double defScale = 1.0;
+    defScale = (model == 0x3) ? (0.00625 / (1 << 16)) : (model == 0x7) ? (0.025 / (1 << 16)) : (model == 0xF)   ? (0.1 / (1 << 16)) : defScale;
+
+    uint16_t low, high;
+    HAL_StatusTypeDef res;
+    HAL_GPIO_WritePin(device->GPIOx, device->GPIO_PIN, 0);
+    HAL_SPI_TransmitReceive(device->hspi, X_ACCL_LOW_REG, &low, 1, 0xFFFF);
+    HAL_SPI_TransmitReceive(device->hspi, X_ACCL_OUT_REG, &high, 1, 0xFFFF);
+    HAL_GPIO_WritePin(device->GPIOx, device->GPIO_PIN, 1);
+    device->Ax = (int32_t)((high << 16) & 0xFFFF0000 | low) * defScale;
+
+    HAL_GPIO_WritePin(device->GPIOx, device->GPIO_PIN, 0);
+    HAL_SPI_TransmitReceive(device->hspi, Y_ACCL_LOW_REG, &low, 1, 0xFFFF);
+    HAL_SPI_TransmitReceive(device->hspi, Y_ACCL_OUT_REG, &high, 1, 0xFFFF);
+    HAL_GPIO_WritePin(device->GPIOx, device->GPIO_PIN, 1);
+    device->Ay = (int32_t)((high << 16) & 0xFFFF0000 | low) * defScale;
+
+    HAL_GPIO_WritePin(device->GPIOx, device->GPIO_PIN, 0);
+    HAL_SPI_TransmitReceive(device->hspi, Z_ACCL_LOW_REG, &low, 1, 0xFFFF);
+    HAL_SPI_TransmitReceive(device->hspi, Z_ACCL_OUT_REG, &high, 1, 0xFFFF);
+    HAL_GPIO_WritePin(device->GPIOx, device->GPIO_PIN, 1);
+    device->Az = (int32_t)((high << 16) & 0xFFFF0000 | low) * defScale;
+}
+
+void ADIS16467_Read_Temp(ADIS16467_t *device)
+{
+    HAL_GPIO_WritePin(device->GPIOx, device->GPIO_PIN, 0);
+    HAL_SPI_TransmitReceive(device->hspi, TEMP_OUT_REG, &(device->prodId), 1, 0xFFFF);
+    HAL_GPIO_WritePin(device->GPIOx, device->GPIO_PIN, 1);
+}
+
+*/

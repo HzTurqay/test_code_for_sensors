@@ -1,4 +1,4 @@
-/**
+   /**
   ******************************************************************************
   * @file    iis2mdc_reg.h
   * @author  Sensors Software Solution Team

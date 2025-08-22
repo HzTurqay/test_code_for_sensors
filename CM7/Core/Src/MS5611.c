@@ -1,27 +1,15 @@
-/*
- * MS5611.c
- *
- *  Created on: Aug 1, 2025
- *      Author: Turgay Mammadov
- */
 
-
-/*
- * barometer.c
- *
- *  Created on: 5 oct. 2018
- *      Author: alex
- */
 
 #include "MS5611.h"
 #include "stm32h7xx_hal.h"
 #include <math.h>
+#include "main.h"
 
 //TODO : set a proper timing
 #define SPI_TIMEOUT 50 //in ms
 
-#define MS5611_EN HAL_GPIO_WritePin(GPIOE, GPIO_PIN_0, GPIO_PIN_RESET);
-#define MS5611_DIS HAL_GPIO_WritePin(GPIOE, GPIO_PIN_0, GPIO_PIN_SET);
+#define MS5611_EN HAL_GPIO_WritePin(BAR2_CS_GPIO_Port, BAR2_CS_Pin, GPIO_PIN_RESET);
+#define MS5611_DIS HAL_GPIO_WritePin(BAR2_CS_GPIO_Port, BAR2_CS_Pin, GPIO_PIN_SET);
 
 #define CMD_RESET 0x1E
 #define CMD_PROM_C1 0xA2
@@ -50,7 +38,7 @@
 #define CONVERSION_OSR_4096 10
 
 static uint16_t prom[6];
-extern SPI_HandleTypeDef hspi2;
+extern SPI_HandleTypeDef hspi6;
 
 //min OSR by default
 static uint8_t pressAddr = PRESSURE_OSR_256;
@@ -109,7 +97,7 @@ static void ms5611_init()
 static void ms5611_write(uint8_t data)
 {
 	MS5611_EN
-	HAL_SPI_Transmit(&hspi2, &data, 1, SPI_TIMEOUT);
+	HAL_SPI_Transmit(&hspi6, &data, 1, SPI_TIMEOUT);
 	MS5611_DIS
 }
 
@@ -118,7 +106,7 @@ static uint16_t ms5611_read16bits(uint8_t reg)
 	uint8_t byte[3];
 	uint16_t return_value;
 	MS5611_EN
-	HAL_SPI_TransmitReceive(&hspi2, &reg, byte, 3, SPI_TIMEOUT);
+	HAL_SPI_TransmitReceive(&hspi6, &reg, byte, 3, SPI_TIMEOUT);
 	MS5611_DIS
 	/**
 	 * We dont care about byte[0] because that is what was recorded while
@@ -135,7 +123,7 @@ static uint32_t ms5611_read24bits(uint8_t reg)
 	uint8_t byte[4];
 	uint32_t return_value;
 	MS5611_EN
-	HAL_SPI_TransmitReceive(&hspi2, &reg, byte, 4, SPI_TIMEOUT);
+	HAL_SPI_TransmitReceive(&hspi6, &reg, byte, 4, SPI_TIMEOUT);
 	MS5611_DIS
 	return_value = ((uint32_t)byte[1]<<16) | ((uint32_t)(byte[2]<<8)) | (byte[3]);
 	return return_value;
@@ -172,7 +160,7 @@ void Barometer_init()
 	ms5611_init();
 }
 
-void Barometer_setOSR(OSR osr)
+void Barometer_setOSR(MS5607OSRFactors osr)
 {
 	switch(osr)
 	{

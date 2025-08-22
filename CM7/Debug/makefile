@@ -65,7 +65,7 @@ main-build: test_code_CM7.elf secondary-outputs
 
 # Tool invocations
 test_code_CM7.elf test_code_CM7.map: $(OBJS) $(USER_OBJS) C:\Users\Turgay\ Mammadov\STM32CubeIDE\workspace_1.18.1\test_code\CM7\STM32H757IITX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "test_code_CM7.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m7 -T"C:\Users\Turgay Mammadov\STM32CubeIDE\workspace_1.18.1\test_code\CM7\STM32H757IITX_FLASH.ld" --specs=nosys.specs -Wl,-Map="test_code_CM7.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+	arm-none-eabi-gcc -o "test_code_CM7.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m7 -T"C:\Users\Turgay Mammadov\STM32CubeIDE\workspace_1.18.1\test_code\CM7\STM32H757IITX_FLASH.ld" --specs=nosys.specs -Wl,-Map="test_code_CM7.map" -Wl,--gc-sections -static -u _printf_float --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

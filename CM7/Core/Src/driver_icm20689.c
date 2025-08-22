@@ -14,8 +14,8 @@
 #define ICM_20689_GPIO_PIN  GPIO_PIN_4
 
 // Macros for enable/disable
-#define ICM_20689_ENABLE   HAL_GPIO_WritePin(ICM_20689_GPIO_PORT, ICM_20689_GPIO_PIN, GPIO_PIN_RESET)
-#define ICM_20689_DISABLE  HAL_GPIO_WritePin(ICM_20689_GPIO_PORT, ICM_20689_GPIO_PIN, GPIO_PIN_SET)
+#define ICM_20689_ENABLE   HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_RESET)
+#define ICM_20689_DISABLE  HAL_GPIO_WritePin(IMU1_CS_GPIO_Port, IMU1_CS_Pin, GPIO_PIN_SET)
 //----------------------------------
 
 /*				REGISTER MAP			*/
@@ -73,8 +73,8 @@ static uint8_t ICM20689_Write_Reg(uint8_t reg,uint8_t value)
 {
 	uint8_t status;
 	ICM_20689_ENABLE;
-	status = HAL_SPI_Transmit(&hspi1, &reg, 1, 0xFFFF);
-	status = HAL_SPI_Transmit(&hspi1, &value, 1, 0xFFFF);
+	status = HAL_SPI_Transmit(&hspi5, &reg, 1, 0xFFFF);
+	status = HAL_SPI_Transmit(&hspi5, &value, 1, 0xFFFF);
 	ICM_20689_DISABLE;
 	return(status);
 }
@@ -84,8 +84,8 @@ static uint8_t ICM20689_Read_Reg(uint8_t reg)
 	uint8_t reg_val;
 	ICM_20689_ENABLE;	
 	reg = reg|0x80;
-	HAL_SPI_Transmit(&hspi1, &reg, 1, 0xFFFF);	 	
- 	HAL_SPI_Receive(&hspi1, &reg_val, 1, 0xFFFF);	
+	HAL_SPI_Transmit(&hspi5, &reg, 1, 0xFFFF);
+ 	HAL_SPI_Receive(&hspi5, &reg_val, 1, 0xFFFF);
 	ICM_20689_DISABLE;															
 	return(reg_val);
 }

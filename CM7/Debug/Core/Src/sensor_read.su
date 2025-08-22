@@ -1,0 +1,6 @@
+../Core/Src/sensor_read.c:42:6:read_ahrs	8	static
+../Core/Src/sensor_read.c:51:6:initialise_adis	16	static
+../Core/Src/sensor_read.c:57:6:read_bar1	16	static
+../Core/Src/sensor_read.c:71:6:read_adis	8	static
+../Core/Src/sensor_read.c:77:6:read_bar2	16	static
+../Core/Src/sensor_read.c:95:5:_write	24	static

@@ -10,11 +10,15 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "MS5607SPI.h"
 
 /**
  * @brief The oversampling rate
  * @warn an higher value means a longer conversion
  */
+
+
+/*
 typedef enum OSR {
 	OSR_256,
 	OSR_512,
@@ -22,6 +26,7 @@ typedef enum OSR {
 	OSR_2048,
 	OSR_4096
 }OSR;
+*/
 
 /**
  * @brief Init the Barometer with default parameters
@@ -34,7 +39,7 @@ extern void Barometer_init();
  * @warn setting an higher value means taking more time to read the data
  * @param osr the oversampling rate (refers to OSR enumeration from barometer.h)
  */
-extern void Barometer_setOSR(OSR osr);
+extern void Barometer_setOSR(MS5607OSRFactors osr);
 
 /**
  * @brief Return the temperature with a 2 digits precision in celcius
